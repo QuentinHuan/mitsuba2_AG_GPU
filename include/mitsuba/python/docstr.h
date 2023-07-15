@@ -5629,6 +5629,10 @@ static const char *__doc_mitsuba_Shape_is_medium_transition = R"doc(Does the sur
 
 static const char *__doc_mitsuba_Shape_is_mesh = R"doc(Is this shape a triangle mesh?)doc";
 
+static const char *__doc_mitsuba_Shape_is_fermat_shape = R"doc(Can this shape be fermat sampled?)doc";
+
+static const char *__doc_mitsuba_Shape_is_caustic_receiver = R"doc(Is this shape a caustic receiver?)doc";
+
 static const char *__doc_mitsuba_Shape_is_sensor = R"doc(Is this shape also an area sensor?)doc";
 
 static const char *__doc_mitsuba_Shape_m_bsdf = R"doc()doc";

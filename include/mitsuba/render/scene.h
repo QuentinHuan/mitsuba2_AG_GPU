@@ -2,9 +2,9 @@
 
 #include <mitsuba/core/spectrum.h>
 #include <mitsuba/render/emitter.h>
-#include <mitsuba/render/shapegroup.h>
 #include <mitsuba/render/fwd.h>
 #include <mitsuba/render/sensor.h>
+#include <mitsuba/render/shapegroup.h>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -38,12 +38,11 @@ public:
     SurfaceInteraction3f ray_intersect(const Ray3f &ray,
                                        Mask active = true) const;
 
-    SurfaceInteraction3f ray_intersect(const Ray3f &ray,
-                                       HitComputeFlags flags,
+    SurfaceInteraction3f ray_intersect(const Ray3f &ray, HitComputeFlags flags,
                                        Mask active = true) const;
 
-    PreliminaryIntersection3f ray_intersect_preliminary(const Ray3f &ray,
-                                                        Mask active = true) const;
+    PreliminaryIntersection3f
+    ray_intersect_preliminary(const Ray3f &ray, Mask active = true) const;
 
     /**
      * \brief Ray intersection using brute force search. Used in
@@ -104,11 +103,43 @@ public:
      *    probability.
      */
     std::pair<DirectionSample3f, Spectrum>
-    sample_emitter_direction(const Interaction3f &ref,
-                             const Point2f &sample,
+    sample_emitter_direction(const Interaction3f &ref, const Point2f &sample,
                              bool test_visibility = true,
-                             Mask active = true) const;
+                             Mask active          = true) const;
 
+    /// fermat
+    /**
+     * \brief Direct illumination through glass panel sampling routine
+     *
+     * Given an arbitrary reference point in the scene, this method samples a
+     * direction from the reference point to towards an emitter.
+     *
+     * Tries to connect the reference point and the emitter by a straith line
+     * and record fermat_shape marked shapes allong the way.
+     *
+     * The encountered shapes are recorded in H1 and H2 ShapePtr.
+     *
+     * If no fermat_shape are encountered, returns a null direction sample.
+     *
+     * \param ref
+     *    A reference point somewhere within the scene
+     *
+     * \param sample
+     *    A uniformly distributed 2D vector
+     *
+     * \param test_visibility
+     *    When set to \c true, a shadow ray will be cast to ensure that the
+     *    sampled emitter position and the reference point are mutually visible.
+     *
+     * \return
+     *    Radiance received along the sampled ray divided by the sample
+     *    probability.
+     */
+    std::pair<DirectionSample3f, Spectrum>
+    sample_emitter_fermat(const Interaction3f &ref,
+                                                  const Point2f &sample_,
+                                                  ShapePtr &H1, ShapePtr &H2,
+                                                  Mask active = true) const;
     /**
      * \brief Evaluate the probability density of the  \ref
      * sample_emitter_direct() technique given an filled-in \ref
@@ -145,7 +176,9 @@ public:
     /// Return the list of emitters
     host_vector<ref<Emitter>, Float> &emitters() { return m_emitters; }
     /// Return the list of emitters (const version)
-    const host_vector<ref<Emitter>, Float> &emitters() const { return m_emitters; }
+    const host_vector<ref<Emitter>, Float> &emitters() const {
+        return m_emitters;
+    }
 
     /// Return the environment emitter (if any)
     const Emitter *environment() const { return m_environment.get(); }
@@ -156,9 +189,12 @@ public:
     const std::vector<ref<Shape>> &shapes() const { return m_shapes; }
 
     /// Return the scene's integrator
-    Integrator* integrator() { return m_integrator; }
+    Integrator *integrator() { return m_integrator; }
     /// Return the scene's integrator
-    const Integrator* integrator() const { return m_integrator; }
+    const Integrator *integrator() const { return m_integrator; }
+
+    /// FermatNEE
+    std::vector<ref<Emitter>> &caustic_emitters() { return m_caustic_emitters; }
 
     //! @}
     // =============================================================
@@ -167,7 +203,8 @@ public:
     void traverse(TraversalCallback *callback) override;
 
     /// Update internal state following a parameter update
-    void parameters_changed(const std::vector<std::string> &/*keys*/ = {}) override;
+    void
+    parameters_changed(const std::vector<std::string> & /*keys*/ = {}) override;
 
     /// Return whether any of the shape's parameters require gradient
     bool shapes_grad_enabled() const { return m_shapes_grad_enabled; };
@@ -192,13 +229,20 @@ protected:
     void accel_release_gpu();
 
     /// Trace a ray and only return a preliminary intersection data structure
-    MTS_INLINE PreliminaryIntersection3f ray_intersect_preliminary_cpu(const Ray3f &ray, Mask active) const;
-    MTS_INLINE PreliminaryIntersection3f ray_intersect_preliminary_gpu(const Ray3f &ray, Mask active) const;
+    MTS_INLINE PreliminaryIntersection3f
+    ray_intersect_preliminary_cpu(const Ray3f &ray, Mask active) const;
+    MTS_INLINE PreliminaryIntersection3f
+    ray_intersect_preliminary_gpu(const Ray3f &ray, Mask active) const;
 
     /// Trace a ray
-    MTS_INLINE SurfaceInteraction3f ray_intersect_cpu(const Ray3f &ray, HitComputeFlags flags, Mask active) const;
-    MTS_INLINE SurfaceInteraction3f ray_intersect_gpu(const Ray3f &ray, HitComputeFlags flags, Mask active) const;
-    MTS_INLINE SurfaceInteraction3f ray_intersect_naive_cpu(const Ray3f &ray, Mask active) const;
+    MTS_INLINE SurfaceInteraction3f ray_intersect_cpu(const Ray3f &ray,
+                                                      HitComputeFlags flags,
+                                                      Mask active) const;
+    MTS_INLINE SurfaceInteraction3f ray_intersect_gpu(const Ray3f &ray,
+                                                      HitComputeFlags flags,
+                                                      Mask active) const;
+    MTS_INLINE SurfaceInteraction3f ray_intersect_naive_cpu(const Ray3f &ray,
+                                                            Mask active) const;
 
     /// Trace a shadow ray
     MTS_INLINE Mask ray_test_cpu(const Ray3f &ray, Mask active) const;
@@ -214,6 +258,7 @@ protected:
 
     host_vector<ref<Emitter>, Float> m_emitters;
     std::vector<ref<Shape>> m_shapes;
+    std::vector<ref<Emitter>> m_caustic_emitters;
     std::vector<ref<ShapeGroup>> m_shapegroups;
     std::vector<ref<Sensor>> m_sensors;
     std::vector<ref<Object>> m_children;
@@ -223,12 +268,14 @@ protected:
     bool m_shapes_grad_enabled;
 };
 
-/// Dummy function which can be called to ensure that the librender shared library is loaded
+/// Dummy function which can be called to ensure that the librender shared
+/// library is loaded
 extern MTS_EXPORT_RENDER void librender_nop();
 
 // See records.h
 template <typename Float, typename Spectrum>
-void DirectionSample<Float, Spectrum>::set_query(const Ray3f &ray, const SurfaceInteraction3f &si) {
+void DirectionSample<Float, Spectrum>::set_query(
+    const Ray3f &ray, const SurfaceInteraction3f &si) {
     p      = si.p;
     n      = si.sh_frame.n;
     uv     = si.uv;
@@ -241,7 +288,8 @@ void DirectionSample<Float, Spectrum>::set_query(const Ray3f &ray, const Surface
 // See interaction.h
 template <typename Float, typename Spectrum>
 typename SurfaceInteraction<Float, Spectrum>::EmitterPtr
-SurfaceInteraction<Float, Spectrum>::emitter(const Scene *scene, Mask active) const {
+SurfaceInteraction<Float, Spectrum>::emitter(const Scene *scene,
+                                             Mask active) const {
     if constexpr (!is_array_v<ShapePtr>) {
         if (is_valid())
             return shape->emitter(active);

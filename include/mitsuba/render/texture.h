@@ -163,6 +163,9 @@ public:
     virtual Color3f eval_3(const SurfaceInteraction3f &si,
                            Mask active = true) const;
 
+    /// Evaluate this texture as a 16-channel quantity.
+    virtual Array<Float, 16> eval_16(const SurfaceInteraction3f &si, Mask active = true) const;
+
     /**
      * Return the mean value of the spectrum over the support
      * (MTS_WAVELENGTH_MIN..MTS_WAVELENGTH_MAX)
@@ -190,6 +193,8 @@ public:
 
     /// Convenience method returning the standard D65 illuminant.
     static ref<Texture> D65(ScalarFloat scale = 1.f);
+
+    virtual ScalarFloat* data() const;
 
     /// Return a string identifier
     std::string id() const override { return m_id; }
@@ -223,6 +228,7 @@ public:
 
     /// Evaluate this texture as a three-channel quantity with no color processing (e.g. normal map).
     virtual Vector3f eval_3(const Interaction3f &si, Mask active = true) const;
+
 
     /**
      * Evaluate the texture at the given surface interaction,

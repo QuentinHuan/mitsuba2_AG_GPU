@@ -1,29 +1,28 @@
 #pragma once
 
-#include <mitsuba/render/optix/vector.cuh>
 #include <mitsuba/render/optix/ray.cuh>
+#include <mitsuba/render/optix/vector.cuh>
 
 #ifndef __CUDACC__
-# include <enoki/matrix.h>
-# include <mitsuba/core/transform.h>
+#include <enoki/matrix.h>
+#include <mitsuba/core/transform.h>
 #endif
 
 namespace optix {
 template <typename Value_, size_t Size_> struct Matrix {
-    using Value = Value_;
-    using Column = Array<Value, Size_>;
+    using Value                  = Value_;
+    using Column                 = Array<Value, Size_>;
     static constexpr size_t Size = Size_;
 
 #ifndef __CUDACC__
     Matrix() = default;
     Matrix(const enoki::Matrix<Value, Size> &a) { enoki::store(m, a); }
 #else
-    DEVICE Matrix() { }
+    DEVICE Matrix() {}
 
     Matrix(const Matrix &) = default;
 
-    template <typename T>
-    DEVICE Matrix(const Matrix<T, Size> &a) {
+    template <typename T> DEVICE Matrix(const Matrix<T, Size> &a) {
         for (size_t i = 0; i < Size; ++i)
             m[i] = (Column) a.m[i];
     }
@@ -42,7 +41,7 @@ template <typename Value_, size_t Size_> struct Matrix {
         return result;
     }
 
-    DEVICE Matrix& operator+=(const Matrix &a) {
+    DEVICE Matrix &operator+=(const Matrix &a) {
         for (size_t i = 0; i < Size; ++i)
             m[i] += a.m[i];
         return *this;
@@ -55,7 +54,7 @@ template <typename Value_, size_t Size_> struct Matrix {
         return result;
     }
 
-    DEVICE Matrix& operator-=(const Matrix &a) {
+    DEVICE Matrix &operator-=(const Matrix &a) {
         for (size_t i = 0; i < Size; ++i)
             m[i] -= a.m[i];
         return *this;
@@ -71,6 +70,26 @@ template <typename Value_, size_t Size_> struct Matrix {
         }
     }
 
+    DEVICE friend Array<float, 4> operator*(const Matrix &a,
+                                            const Array<float, 4> &v) {
+        Array<float, 4> result;
+        for (size_t j = 0; j < Size; ++j) {
+            float sum = 0.f;
+            for (size_t i = 0; i < Size; ++i)
+                sum += a[j][i] * v[i];
+            result[j] = sum;
+        }
+        return result;
+    }
+
+    DEVICE Vector4f transform_vector4(const Vector4f &v) {
+        Vector4f result = m[0];
+        result *= v.x();
+        for (size_t i = 1; i < 3; ++i)
+            result = fmaf(v[i], m[i], result);
+        return result;
+    }
+
     DEVICE bool operator==(const Matrix &a) const {
         for (size_t i = 0; i < Size; ++i) {
             if (m[i] != a.m[i])
@@ -79,9 +98,7 @@ template <typename Value_, size_t Size_> struct Matrix {
         return true;
     }
 
-    DEVICE bool operator!=(const Matrix &a) const {
-        return !operator==(a);
-    }
+    DEVICE bool operator!=(const Matrix &a) const { return !operator==(a); }
 
     DEVICE const Column &operator[](size_t i) const {
         assert(i < Size);
@@ -123,20 +140,21 @@ struct Transform4f {
     Transform4f(const mitsuba::Transform<mitsuba::Point<float, 4>> &t)
         : matrix(t.matrix), inverse_transpose(t.inverse_transpose) {}
 #else
-    DEVICE Transform4f() { }
+    DEVICE Transform4f() {}
 
     DEVICE Transform4f(float m[12], float inv[12]) {
         for (size_t i = 0; i < 3; ++i)
             for (size_t j = 0; j < 4; ++j)
-                matrix[j][i] = m[i*4 + j];
+                matrix[j][i] = m[i * 4 + j];
         matrix[0][3] = matrix[1][3] = matrix[2][3] = 0.f;
-        matrix[3][3] = 1.f;
+        matrix[3][3]                               = 1.f;
 
         for (size_t i = 0; i < 3; ++i)
             for (size_t j = 0; j < 4; ++j)
-                inverse_transpose[i][j] = inv[i*4 + j];
-        inverse_transpose[3][0] = inverse_transpose[3][1] = inverse_transpose[3][2] = 0.f;
-        inverse_transpose[3][3] = 1.f;
+                inverse_transpose[i][j] = inv[i * 4 + j];
+        inverse_transpose[3][0]     = inverse_transpose[3][1] =
+            inverse_transpose[3][2] = 0.f;
+        inverse_transpose[3][3]     = 1.f;
     }
 
     DEVICE Vector3f transform_point(const Vector3f &p) {
@@ -163,8 +181,8 @@ struct Transform4f {
     }
 
     DEVICE Ray3f transform_ray(const Ray3f &ray) {
-        return Ray3f(transform_point(ray.o), transform_vector(ray.d),
-                     ray.mint, ray.maxt, ray.time);
+        return Ray3f(transform_point(ray.o), transform_vector(ray.d), ray.mint,
+                     ray.maxt, ray.time);
     }
 
     /// Debug print

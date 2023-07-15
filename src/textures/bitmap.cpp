@@ -205,6 +205,9 @@ public:
         m_mean = ScalarFloat(mean / pixel_count);
     }
 
+    ScalarFloat* data() const override {return (ScalarFloat*) m_bitmap->data();} 
+
+
     /**
      * Recursively expand into an implementation specialized to the
      * actual loaded image.
@@ -281,6 +284,8 @@ public:
                 return result;
         }
     }
+
+    ScalarFloat* data() const {return (ScalarFloat*) m_data.data();}
 
     Float eval_1(const SurfaceInteraction3f &si, Mask active = true) const override {
         MTS_MASKED_FUNCTION(ProfilerPhase::TextureEvaluate, active);
@@ -383,6 +388,24 @@ public:
         }
     }
 
+    Array<Float, 16> eval_16(const SurfaceInteraction3f &si, Mask active = true) const override {
+        MTS_MASKED_FUNCTION(ProfilerPhase::TextureEvaluate, active);
+
+        if constexpr (Channels != 16) {
+            ENOKI_MARK_USED(si);
+            Throw("eval_3(): The bitmap texture %s was queried for a 16 channels "
+                  "value, but it is monochromatic or RGB!", to_string());
+        } else if constexpr (is_spectral_v<Spectrum> && !Raw) {
+            ENOKI_MARK_USED(si);
+            Throw("eval_3(): The bitmap texture %s was queried for a 16 channels "
+                  "value, but texture conversion to color spectra had "
+                  "previously been requested! (raw=false)",
+                  to_string());
+        } else {
+            return interpolate(si, active);
+        }
+    }
+
     template <typename T> T wrap(const T &value) const {
         if (m_wrap_mode == WrapMode::Clamp) {
             return clamp(value, 0, m_resolution - 1);
@@ -402,7 +425,7 @@ public:
 
     MTS_INLINE auto interpolate(const SurfaceInteraction3f &si, Mask active) const {
         // Storage representation underlying this texture
-        using StorageType = std::conditional_t<Channels == 1, Float, Color3f>;
+        using StorageType = std::conditional_t<Channels == 1, Float, std::conditional_t<Channels == 3, Color3f, Array<Float, 16> > >;
 
         if constexpr (!is_array_v<Mask>)
             active = true;
@@ -578,6 +601,7 @@ public:
     }
 
     bool is_spatially_varying() const override { return true; }
+
 
     std::string to_string() const override {
         std::ostringstream oss;

@@ -46,6 +46,11 @@ Texture<Float, Spectrum>::eval_3(const SurfaceInteraction3f &, Mask) const {
     NotImplementedError("eval_3");
 }
 
+MTS_VARIANT Array<Float, 16>
+Texture<Float, Spectrum>::eval_16(const SurfaceInteraction3f &, Mask) const {
+    NotImplementedError("eval_16");
+}
+
 MTS_VARIANT typename Texture<Float, Spectrum>::ScalarFloat
 Texture<Float, Spectrum>::mean() const {
     NotImplementedError("mean");
@@ -61,6 +66,11 @@ Texture<Float, Spectrum>::sample_position(const Point2f &sample,
 MTS_VARIANT
 Float Texture<Float, Spectrum>::pdf_position(const Point2f &, Mask) const {
     return 1;
+}
+
+MTS_VARIANT
+typename Texture<Float, Spectrum>::ScalarFloat* Texture<Float, Spectrum>::data() const {
+    NotImplementedError("data");
 }
 
 MTS_VARIANT ref<Texture<Float, Spectrum>>
@@ -113,6 +123,7 @@ Volume<Float, Spectrum>::eval_gradient(const Interaction3f & /*it*/, Mask /*acti
 
 MTS_VARIANT typename Volume<Float, Spectrum>::ScalarFloat
 Volume<Float, Spectrum>::max() const { NotImplementedError("max"); }
+
 
 MTS_VARIANT typename Volume<Float, Spectrum>::ScalarVector3i
 Volume<Float, Spectrum>::resolution() const {

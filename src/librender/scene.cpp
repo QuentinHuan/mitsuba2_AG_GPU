@@ -1,20 +1,20 @@
-#include <mitsuba/core/properties.h>
+#include <enoki/stl.h>
 #include <mitsuba/core/plugin.h>
+#include <mitsuba/core/properties.h>
 #include <mitsuba/render/bsdf.h>
+#include <mitsuba/render/integrator.h>
+#include <mitsuba/render/kdtree.h>
 #include <mitsuba/render/medium.h>
 #include <mitsuba/render/scene.h>
-#include <mitsuba/render/kdtree.h>
-#include <mitsuba/render/integrator.h>
-#include <enoki/stl.h>
 
 #if defined(MTS_ENABLE_EMBREE)
-#  include "scene_embree.inl"
+#include "scene_embree.inl"
 #else
-#  include "scene_native.inl"
+#include "scene_native.inl"
 #endif
 
 #if defined(MTS_ENABLE_OPTIX)
-#  include "scene_optix.inl"
+#include "scene_optix.inl"
 #endif
 
 NAMESPACE_BEGIN(mitsuba)
@@ -34,19 +34,21 @@ MTS_VARIANT Scene<Float, Spectrum>::Scene(const Properties &props) {
             if (shape->is_sensor())
                 m_sensors.push_back(shape->sensor());
             if (shape->is_shapegroup()) {
-                m_shapegroups.push_back((ShapeGroup*)shape);
+                m_shapegroups.push_back((ShapeGroup *) shape);
             } else {
                 m_bbox.expand(shape->bbox());
                 m_shapes.push_back(shape);
             }
         } else if (emitter) {
-            // Surface emitters will be added to the list when attached to a shape
+            // Surface emitters will be added to the list when attached to a
+            // shape
             if (!has_flag(emitter->flags(), EmitterFlags::Surface))
                 m_emitters.push_back(emitter);
 
             if (emitter->is_environment()) {
                 if (m_environment)
-                    Throw("Only one environment emitter can be specified per scene.");
+                    Throw("Only one environment emitter can be specified per "
+                          "scene.");
                 m_environment = emitter;
             }
         } else if (sensor) {
@@ -66,19 +68,22 @@ MTS_VARIANT Scene<Float, Spectrum>::Scene(const Properties &props) {
         /* Create a perspective camera with a 45 deg. field of view
            and positioned so that it can see the entire scene */
         if (m_bbox.valid()) {
-            ScalarPoint3f center = m_bbox.center();
+            ScalarPoint3f center   = m_bbox.center();
             ScalarVector3f extents = m_bbox.extents();
 
             ScalarFloat distance =
-                hmax(extents) / (2.f * std::tan(45.f * .5f * math::Pi<ScalarFloat> / 180.f));
+                hmax(extents) /
+                (2.f * std::tan(45.f * .5f * math::Pi<ScalarFloat> / 180.f));
 
             sensor_props.set_float("far_clip", hmax(extents) * 5 + distance);
             sensor_props.set_float("near_clip", distance / 100);
 
-            sensor_props.set_float("focus_distance", distance + extents.z() / 2);
+            sensor_props.set_float("focus_distance",
+                                   distance + extents.z() / 2);
             sensor_props.set_transform(
-                "to_world", ScalarTransform4f::translate(ScalarVector3f(
-                                center.x(), center.y(), m_bbox.min.z() - distance)));
+                "to_world",
+                ScalarTransform4f::translate(ScalarVector3f(
+                    center.x(), center.y(), m_bbox.min.z() - distance)));
         }
 
         m_sensors.push_back(
@@ -87,8 +92,8 @@ MTS_VARIANT Scene<Float, Spectrum>::Scene(const Properties &props) {
 
     if (!m_integrator) {
         Log(Warn, "No integrator found! Instantiating a path tracer..");
-        m_integrator = PluginManager::instance()->
-            create_object<Integrator>(Properties("path"));
+        m_integrator = PluginManager::instance()->create_object<Integrator>(
+            Properties("path"));
     }
 
     if constexpr (is_cuda_array_v<Float>)
@@ -97,7 +102,7 @@ MTS_VARIANT Scene<Float, Spectrum>::Scene(const Properties &props) {
         accel_init_cpu(props);
 
     // Create emitters' shapes (environment luminaires)
-    for (Emitter *emitter: m_emitters)
+    for (Emitter *emitter : m_emitters)
         emitter->set_scene(this);
 
     m_shapes_grad_enabled = false;
@@ -121,7 +126,8 @@ Scene<Float, Spectrum>::ray_intersect(const Ray3f &ray, Mask active) const {
 }
 
 MTS_VARIANT typename Scene<Float, Spectrum>::SurfaceInteraction3f
-Scene<Float, Spectrum>::ray_intersect(const Ray3f &ray, HitComputeFlags flags, Mask active) const {
+Scene<Float, Spectrum>::ray_intersect(const Ray3f &ray, HitComputeFlags flags,
+                                      Mask active) const {
     MTS_MASKED_FUNCTION(ProfilerPhase::RayIntersect, active);
 
     if constexpr (is_cuda_array_v<Float>)
@@ -131,7 +137,8 @@ Scene<Float, Spectrum>::ray_intersect(const Ray3f &ray, HitComputeFlags flags, M
 }
 
 MTS_VARIANT typename Scene<Float, Spectrum>::PreliminaryIntersection3f
-Scene<Float, Spectrum>::ray_intersect_preliminary(const Ray3f &ray, Mask active) const {
+Scene<Float, Spectrum>::ray_intersect_preliminary(const Ray3f &ray,
+                                                  Mask active) const {
     if constexpr (is_cuda_array_v<Float>)
         return ray_intersect_preliminary_gpu(ray, active);
     else
@@ -139,7 +146,8 @@ Scene<Float, Spectrum>::ray_intersect_preliminary(const Ray3f &ray, Mask active)
 }
 
 MTS_VARIANT typename Scene<Float, Spectrum>::SurfaceInteraction3f
-Scene<Float, Spectrum>::ray_intersect_naive(const Ray3f &ray, Mask active) const {
+Scene<Float, Spectrum>::ray_intersect_naive(const Ray3f &ray,
+                                            Mask active) const {
     MTS_MASKED_FUNCTION(ProfilerPhase::RayIntersect, active);
 
 #if !defined(MTS_ENABLE_EMBREE)
@@ -161,12 +169,15 @@ Scene<Float, Spectrum>::ray_test(const Ray3f &ray, Mask active) const {
         return ray_test_cpu(ray, active);
 }
 
-MTS_VARIANT std::pair<typename Scene<Float, Spectrum>::DirectionSample3f, Spectrum>
-Scene<Float, Spectrum>::sample_emitter_direction(const Interaction3f &ref, const Point2f &sample_,
-                                                 bool test_visibility, Mask active) const {
+MTS_VARIANT
+std::pair<typename Scene<Float, Spectrum>::DirectionSample3f, Spectrum>
+Scene<Float, Spectrum>::sample_emitter_direction(const Interaction3f &ref,
+                                                 const Point2f &sample_,
+                                                 bool test_visibility,
+                                                 Mask active) const {
     MTS_MASKED_FUNCTION(ProfilerPhase::SampleEmitterDirection, active);
 
-    using EmitterPtr = replace_scalar_t<Float, Emitter*>;
+    using EmitterPtr = replace_scalar_t<Float, Emitter *>;
 
     Point2f sample(sample_);
     DirectionSample3f ds;
@@ -175,7 +186,8 @@ Scene<Float, Spectrum>::sample_emitter_direction(const Interaction3f &ref, const
     if (likely(!m_emitters.empty())) {
         if (m_emitters.size() == 1) {
             // Fast path if there is only one emitter
-            std::tie(ds, spec) = m_emitters[0]->sample_direction(ref, sample, active);
+            std::tie(ds, spec) =
+                m_emitters[0]->sample_direction(ref, sample, active);
         } else {
             ScalarFloat emitter_pdf = 1.f / m_emitters.size();
 
@@ -185,9 +197,10 @@ Scene<Float, Spectrum>::sample_emitter_direction(const Interaction3f &ref, const
                     (uint32_t) m_emitters.size() - 1);
 
             // Rescale sample.x() to lie in [0,1) again
-            sample.x() = (sample.x() - index*emitter_pdf) * m_emitters.size();
+            sample.x() = (sample.x() - index * emitter_pdf) * m_emitters.size();
 
-            EmitterPtr emitter = gather<EmitterPtr>(m_emitters.data(), index, active);
+            EmitterPtr emitter =
+                gather<EmitterPtr>(m_emitters.data(), index, active);
 
             // Sample a direction towards the emitter
             std::tie(ds, spec) = emitter->sample_direction(ref, sample, active);
@@ -201,37 +214,119 @@ Scene<Float, Spectrum>::sample_emitter_direction(const Interaction3f &ref, const
 
         // Perform a visibility test if requested
         if (test_visibility && any_or<true>(active)) {
-            Ray3f ray(ref.p, ds.d, math::RayEpsilon<Float> * (1.f + hmax(abs(ref.p))),
-                      ds.dist * (1.f - math::ShadowEpsilon<Float>), ref.time, ref.wavelengths);
+            Ray3f ray(ref.p, ds.d,
+                      math::RayEpsilon<Float> * (1.f + hmax(abs(ref.p))),
+                      ds.dist * (1.f - math::ShadowEpsilon<Float>), ref.time,
+                      ref.wavelengths);
             spec[ray_test(ray, active)] = 0.f;
         }
     } else {
-        ds = zero<DirectionSample3f>();
+        ds   = zero<DirectionSample3f>();
         spec = 0.f;
     }
 
     return { ds, spec };
 }
 
-MTS_VARIANT Float
-Scene<Float, Spectrum>::pdf_emitter_direction(const Interaction3f &ref,
-                                              const DirectionSample3f &ds,
+/// Fermat
+MTS_VARIANT
+std::pair<typename Scene<Float, Spectrum>::DirectionSample3f, Spectrum>
+Scene<Float, Spectrum>::sample_emitter_fermat(const Interaction3f &ref,
+                                              const Point2f &sample_,
+                                              ShapePtr &H1, ShapePtr &H2,
                                               Mask active) const {
+    MTS_MASKED_FUNCTION(ProfilerPhase::SampleEmitterDirection, active);
+
+    using EmitterPtr = replace_scalar_t<Float, Emitter *>;
+
+    Point2f sample(sample_);
+    DirectionSample3f ds;
+    Spectrum spec;
+
+    if (likely(!m_emitters.empty())) {
+        if (m_emitters.size() == 1) {
+            // Fast path if there is only one emitter
+            std::tie(ds, spec) =
+                m_emitters[0]->sample_direction(ref, sample, active);
+        } else {
+            ScalarFloat emitter_pdf = 1.f / m_emitters.size();
+
+            // Randomly pick an emitter
+            UInt32 index =
+                min(UInt32(sample.x() * (ScalarFloat) m_emitters.size()),
+                    (uint32_t) m_emitters.size() - 1);
+
+            // Rescale sample.x() to lie in [0,1) again
+            sample.x() = (sample.x() - index * emitter_pdf) * m_emitters.size();
+
+            EmitterPtr emitter =
+                gather<EmitterPtr>(m_emitters.data(), index, active);
+
+            // Sample a direction towards the emitter
+            std::tie(ds, spec) = emitter->sample_direction(ref, sample, active);
+
+            // Account for the discrete probability of sampling this emitter
+            ds.pdf *= emitter_pdf;
+            spec *= rcp(emitter_pdf);
+        }
+        active &= neq(ds.pdf, 0.f);
+
+        // check if there is two fermat_shape in line of sight
+        if (any_or<true>(active)) {
+            Ray3f ray(ref.p, ds.d,
+                      math::RayEpsilon<Float> * (1.f + hmax(abs(ref.p))),
+                      ds.dist * (1.f - math::ShadowEpsilon<Float>), ref.time,
+                      ref.wavelengths);
+            // spec[ray_test(ray, active)] = 0.f;
+
+            SurfaceInteraction3f si_heightfieldTest =
+                ray_intersect(ray, active);
+            active = active && si_heightfieldTest.is_valid() && si_heightfieldTest.shape->is_fermat_shape();
+            // TODO check is_valid() necessary ??
+            if (any_or<true>(active)) {
+                BSDFContext ctx;
+                auto [bs, bsdf_val] = si_heightfieldTest.bsdf()->sample(
+                    ctx, si_heightfieldTest, sample[0], sample, active);
+                ray = si_heightfieldTest.spawn_ray(
+                    si_heightfieldTest.to_world(bs.wo));
+
+                // check second heighfield
+                SurfaceInteraction3f si_heightfieldTest_2 =
+                    ray_intersect(ray, active);
+                active = active && si_heightfieldTest_2.is_valid() && si_heightfieldTest_2.shape->is_fermat_shape();
+                if (any_or<true>(active)) {
+                    H1            = si_heightfieldTest.shape;
+                    H2            = si_heightfieldTest_2.shape;
+                    ds[!active]   = zero<DirectionSample3f>();
+                    spec[!active] = 0.f;
+                }
+            }
+        }
+    } else {
+        ds   = zero<DirectionSample3f>();
+        spec = 0.f;
+    }
+
+    return { ds, spec };
+}
+
+MTS_VARIANT Float Scene<Float, Spectrum>::pdf_emitter_direction(
+    const Interaction3f &ref, const DirectionSample3f &ds, Mask active) const {
     MTS_MASK_ARGUMENT(active);
     using EmitterPtr = replace_scalar_t<Float, const Emitter *>;
-
 
     if (m_emitters.size() == 1) {
         // Fast path if there is only one emitter
         return m_emitters[0]->pdf_direction(ref, ds, active);
     } else {
-        return reinterpret_array<EmitterPtr>(ds.object)->pdf_direction(ref, ds, active) *
-            (1.f / m_emitters.size());
+        return reinterpret_array<EmitterPtr>(ds.object)->pdf_direction(ref, ds,
+                                                                       active) *
+               (1.f / m_emitters.size());
     }
 }
 
 MTS_VARIANT void Scene<Float, Spectrum>::traverse(TraversalCallback *callback) {
-    for (auto& child : m_children) {
+    for (auto &child : m_children) {
         std::string id = child->id();
         if (id.empty() || string::starts_with(id, "_unnamed_"))
             id = child->class_()->name();
@@ -239,13 +334,16 @@ MTS_VARIANT void Scene<Float, Spectrum>::traverse(TraversalCallback *callback) {
     }
 }
 
-MTS_VARIANT void Scene<Float, Spectrum>::parameters_changed(const std::vector<std::string> &keys) {
+MTS_VARIANT void Scene<Float, Spectrum>::parameters_changed(
+    const std::vector<std::string> &keys) {
     if (m_environment)
-        m_environment->set_scene(this); // TODO use parameters_changed({"scene"})
+        m_environment->set_scene(this); // TODO use
+                                        // parameters_changed({"scene"})
 
     bool update_accel = false;
     for (auto &s : m_shapes) {
-        if (string::contains(keys, s->id()) || string::contains(keys, s->class_()->name())) {
+        if (string::contains(keys, s->id()) ||
+            string::contains(keys, s->class_()->name())) {
             update_accel = true;
             break;
         }
@@ -262,29 +360,28 @@ MTS_VARIANT void Scene<Float, Spectrum>::parameters_changed(const std::vector<st
     // Checks whether any of the shape's parameters require gradient
     m_shapes_grad_enabled = false;
     if constexpr (is_diff_array_v<Float>) {
-        for (auto& s : m_shapes) {
+        for (auto &s : m_shapes) {
             m_shapes_grad_enabled |= s->parameters_grad_enabled();
-            if (m_shapes_grad_enabled) break;
+            if (m_shapes_grad_enabled)
+                break;
         }
     }
 }
 
 MTS_VARIANT std::string Scene<Float, Spectrum>::to_string() const {
     std::ostringstream oss;
-    oss << "Scene[" << std::endl
-        << "  children = [" << std::endl;
+    oss << "Scene[" << std::endl << "  children = [" << std::endl;
     for (size_t i = 0; i < m_children.size(); ++i) {
         oss << "    " << string::indent(m_children[i], 4);
         if (i + 1 < m_children.size())
             oss << ",";
-        oss <<  std::endl;
+        oss << std::endl;
     }
-    oss << "  ]"<< std::endl
-        << "]";
+    oss << "  ]" << std::endl << "]";
     return oss.str();
 }
 
-void librender_nop() { }
+void librender_nop() {}
 
 MTS_IMPLEMENT_CLASS_VARIANT(Scene, Object, "scene")
 MTS_INSTANTIATE_CLASS(Scene)

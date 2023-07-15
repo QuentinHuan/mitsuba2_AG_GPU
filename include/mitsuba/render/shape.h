@@ -1,13 +1,13 @@
 #pragma once
 
-#include <mitsuba/render/records.h>
+#include <enoki/stl.h>
+#include <mitsuba/core/bbox.h>
 #include <mitsuba/core/spectrum.h>
 #include <mitsuba/core/transform.h>
-#include <mitsuba/core/bbox.h>
-#include <enoki/stl.h>
+#include <mitsuba/render/records.h>
 
 #if defined(MTS_ENABLE_OPTIX)
-#  include <mitsuba/render/optix/common.h>
+#include <mitsuba/render/optix/common.h>
 #endif
 
 NAMESPACE_BEGIN(mitsuba)
@@ -62,7 +62,8 @@ public:
      * \return
      *     The probability density per unit area
      */
-    virtual Float pdf_position(const PositionSample3f &ps, Mask active = true) const;
+    virtual Float pdf_position(const PositionSample3f &ps,
+                               Mask active = true) const;
 
     /**
      * \brief Sample a direction towards this shape with respect to solid
@@ -91,7 +92,8 @@ public:
      * \return
      *     A \ref DirectionSample instance describing the generated sample
      */
-    virtual DirectionSample3f sample_direction(const Interaction3f &it, const Point2f &sample,
+    virtual DirectionSample3f sample_direction(const Interaction3f &it,
+                                               const Point2f &sample,
                                                Mask active = true) const;
 
     /**
@@ -106,7 +108,8 @@ public:
      * \return
      *     The probability density per unit solid angle
      */
-    virtual Float pdf_direction(const Interaction3f &it, const DirectionSample3f &ds,
+    virtual Float pdf_direction(const Interaction3f &it,
+                                const DirectionSample3f &ds,
                                 Mask active = true) const;
 
     //! @}
@@ -135,8 +138,8 @@ public:
      *    sizeof(Float[P])</tt> bytes) that must be supplied to cache
      *    information about the intersection.
      */
-    virtual PreliminaryIntersection3f ray_intersect_preliminary(const Ray3f &ray,
-                                                                Mask active = true) const;
+    virtual PreliminaryIntersection3f
+    ray_intersect_preliminary(const Ray3f &ray, Mask active = true) const;
 
     /**
      * \brief Fast ray shadow test
@@ -148,7 +151,8 @@ public:
      * No details about the intersection are returned, hence the function is
      * only useful for visibility queries. For most shapes, the implementation
      * will simply forward the call to \ref ray_intersect_preliminary(). When
-     * the shape actually contains a nested kd-tree, some optimizations are possible.
+     * the shape actually contains a nested kd-tree, some optimizations are
+     * possible.
      *
      * \param ray
      *     The ray to be tested for an intersection
@@ -156,16 +160,18 @@ public:
     virtual Mask ray_test(const Ray3f &ray, Mask active = true) const;
 
     /**
-     * \brief Compute and return detailed information related to a surface interaction
+     * \brief Compute and return detailed information related to a surface
+     * interaction
      *
      * The implementation should at most compute the fields \c p, \c uv, \c n,
-     * \c sh_frame.n, \c dp_du, \c dp_dv, \c dn_du and \c dn_dv. The \c flags parameter
-     * specifies which of those fields should be computed.
+     * \c sh_frame.n, \c dp_du, \c dp_dv, \c dn_du and \c dn_dv. The \c flags
+     * parameter specifies which of those fields should be computed.
      *
-     * The fields \c t, \c time, \c wavelengths, \c shape, \c prim_index, \c instance,
-     * will already have been initialized by the caller. The field \c wi is initialized
-     * by the caller following the call to \ref compute_surface_interaction(), and
-     * \c duv_dx, and \c duv_dy are left uninitialized.
+     * The fields \c t, \c time, \c wavelengths, \c shape, \c prim_index, \c
+     * instance, will already have been initialized by the caller. The field \c
+     * wi is initialized by the caller following the call to \ref
+     * compute_surface_interaction(), and \c duv_dx, and \c duv_dy are left
+     * uninitialized.
      *
      * \param ray
      *      Ray associated with the ray intersection
@@ -176,10 +182,10 @@ public:
      * \return
      *      A data structure containing the detailed information
      */
-    virtual SurfaceInteraction3f compute_surface_interaction(const Ray3f &ray,
-                                                             PreliminaryIntersection3f pi,
-                                                             HitComputeFlags flags = HitComputeFlags::All,
-                                                             Mask active = true) const;
+    virtual SurfaceInteraction3f
+    compute_surface_interaction(const Ray3f &ray, PreliminaryIntersection3f pi,
+                                HitComputeFlags flags = HitComputeFlags::All,
+                                Mask active           = true) const;
 
     /**
      * \brief Test for an intersection and return detailed information
@@ -193,9 +199,32 @@ public:
      * \param flags
      *     Describe how the detailed information should be computed
      */
-    SurfaceInteraction3f ray_intersect(const Ray3f &ray,
-                                       HitComputeFlags flags = HitComputeFlags::All,
-                                       Mask active = true) const;
+    SurfaceInteraction3f
+    ray_intersect(const Ray3f &ray,
+                  HitComputeFlags flags = HitComputeFlags::All,
+                  Mask active           = true) const;
+
+    /**
+     * \brief Return the derivative of the normal vector with respect to the UV
+     * parameterization
+     *
+     * This can be used to compute Gaussian and principal curvatures, amongst
+     * other things.
+     *
+     * \param si
+     *     Surface interaction associated with the query
+     *
+     * \param shading_frame
+     *     Specifies whether to compute the derivative of the
+     *     geometric normal \a or the shading normal of the surface
+     *
+     * \return
+     *     The partial derivatives of the normal vector with
+     *     respect to \c u and \c v.
+     */
+    virtual std::pair<Vector3f, Vector3f>
+    normal_derivative(const SurfaceInteraction3f &si, bool shading_frame = true,
+                      Mask active = true) const;
 
     //! @}
     // =============================================================
@@ -241,7 +270,8 @@ public:
     virtual ScalarFloat surface_area() const;
 
     /**
-     * \brief Evaluate a specific shape attribute at the given surface interaction.
+     * \brief Evaluate a specific shape attribute at the given surface
+     * interaction.
      *
      * Shape attributes are user-provided fields that provide extra
      * information at an intersection. An example of this would be a per-vertex
@@ -263,11 +293,12 @@ public:
                                                Mask active = true) const;
 
     /**
-     * \brief Monochromatic evaluation of a shape attribute at the given surface interaction
+     * \brief Monochromatic evaluation of a shape attribute at the given surface
+     * interaction
      *
-     * This function differs from \ref eval_attribute() in that it provided raw access to
-     * scalar intensity/reflectance values without any color processing (e.g.
-     * spectral upsampling).
+     * This function differs from \ref eval_attribute() in that it provided raw
+     * access to scalar intensity/reflectance values without any color
+     * processing (e.g. spectral upsampling).
      *
      * \param name
      *     Name of the attribute to evaluate
@@ -285,11 +316,12 @@ public:
                                    Mask active = true) const;
 
     /**
-     * \brief Trichromatic evaluation of a shape attribute at the given surface interaction
+     * \brief Trichromatic evaluation of a shape attribute at the given surface
+     * interaction
      *
-     * This function differs from \ref eval_attribute() in that it provided raw access to
-     * RGB intensity/reflectance values without any additional color processing
-     * (e.g. RGB-to-spectral upsampling).
+     * This function differs from \ref eval_attribute() in that it provided raw
+     * access to RGB intensity/reflectance values without any additional color
+     * processing (e.g. RGB-to-spectral upsampling).
      *
      * \param name
      *     Name of the attribute to evaluate
@@ -306,6 +338,13 @@ public:
                                      const SurfaceInteraction3f &si,
                                      Mask active = true) const;
 
+    virtual Float eval_texture(int index, Point2f p, Mask active = true) const;
+    virtual void fill_curvature(Point2f p, Float *r, Mask active = true) const;
+    virtual Matrix2f curvature_matrix(const SurfaceInteraction3f &si,
+                                      Mask active = true) const;
+    virtual int get_pair_id(Mask /*active*/) const;
+    virtual int get_self_id(Mask /*active*/) const;
+
     /**
      * \brief Parameterize the mesh using UV values
      *
@@ -315,8 +354,8 @@ public:
      * this interface via ray tracing, others are to follow later.
      * The default implementation throws.
      */
-    virtual SurfaceInteraction3f eval_parameterization(const Point2f &uv,
-                                                       Mask active = true) const;
+    virtual SurfaceInteraction3f
+    eval_parameterization(const Point2f &uv, Mask active = true) const;
 
     //! @}
     // =============================================================
@@ -329,17 +368,32 @@ public:
     std::string id() const override;
 
     /// Is this shape a triangle mesh?
-    bool is_mesh() const { return class_()->derives_from(Mesh<Float, Spectrum>::m_class); }
+    bool is_mesh() const {
+        return class_()->derives_from(Mesh<Float, Spectrum>::m_class);
+    }
+
+    /// Can this shape be fermat sampled?
+    bool is_fermat_shape() const { return m_fermat_shape; }
+
+    /// Is this shape a caustic receiver ?
+    bool is_caustic_receiver() const { return (bool) m_caustic_receiver; }
+
+    /// Is this shape a caustic receiver ?
+    bool is_caustic_caster() const { return (bool) m_caustic_caster; }
 
     /// Is this shape a shapegroup?
-    bool is_shapegroup() const { return class_()->name() == "ShapeGroupPlugin"; };
+    bool is_shapegroup() const {
+        return class_()->name() == "ShapeGroupPlugin";
+    };
 
     /// Is this shape an instance?
     bool is_instance() const { return class_()->name() == "Instance"; };
 
     /// Does the surface of this shape mark a medium transition?
-    bool is_medium_transition() const { return m_interior_medium.get() != nullptr ||
-                                               m_exterior_medium.get() != nullptr; }
+    bool is_medium_transition() const {
+        return m_interior_medium.get() != nullptr ||
+               m_exterior_medium.get() != nullptr;
+    }
 
     /// Return the medium that lies on the interior of this shape
     const Medium *interior_medium() const { return m_interior_medium.get(); }
@@ -357,7 +411,9 @@ public:
     bool is_emitter() const { return (bool) m_emitter; }
 
     /// Return the area emitter associated with this shape (if any)
-    const Emitter *emitter(Mask /* unused */ = false) const { return m_emitter.get(); }
+    const Emitter *emitter(Mask /* unused */ = false) const {
+        return m_emitter.get();
+    }
 
     /// Return the area emitter associated with this shape (if any)
     Emitter *emitter(Mask /* unused */ = false) { return m_emitter.get(); }
@@ -387,7 +443,6 @@ public:
      */
     virtual ScalarSize effective_primitive_count() const;
 
-
 #if defined(MTS_ENABLE_EMBREE)
     /// Return the Embree version of this shape
     virtual RTCGeometry embree_geometry(RTCDevice device);
@@ -395,12 +450,13 @@ public:
 
 #if defined(MTS_ENABLE_OPTIX)
     /**
-     * \brief Populates the GPU data buffer, used in the Optix Hitgroup sbt records.
+     * \brief Populates the GPU data buffer, used in the Optix Hitgroup sbt
+     * records.
      *
      * \remark
      *      Actual implementations of this method should allocate the field \ref
-     *      m_optix_data_ptr on the GPU and populate it with the Optix representation
-     *      of the class.
+     *      m_optix_data_ptr on the GPU and populate it with the Optix
+     * representation of the class.
      *
      * The default implementation throws an exception.
      */
@@ -411,14 +467,16 @@ public:
      *
      * \param build_input
      *     A reference to the build input to be filled. The field
-     *     build_input.type has to be set, along with the associated members. For
-     *     now, Mistuba only supports the types \ref OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES
-     *     and \ref OPTIX_BUILD_INPUT_TYPE_TRIANGLES.
+     *     build_input.type has to be set, along with the associated members.
+     * For now, Mistuba only supports the types \ref
+     * OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES and \ref
+     * OPTIX_BUILD_INPUT_TYPE_TRIANGLES.
      *
-     * The default implementation assumes that an implicit Shape (custom primitive
-     * build type) is begin constructed, with its GPU data stored at \ref m_optix_data_ptr.
+     * The default implementation assumes that an implicit Shape (custom
+     * primitive build type) is begin constructed, with its GPU data stored at
+     * \ref m_optix_data_ptr.
      */
-    virtual void optix_build_input(OptixBuildInput& build_input) const;
+    virtual void optix_build_input(OptixBuildInput &build_input) const;
 
     /**
      * \brief Prepares and fills the \ref OptixInstance(s) associated with this
@@ -442,14 +500,15 @@ public:
      *     is part of an Instance.
      *
      * \param transf
-     *     The current to_world transformation (should allow for recursive instancing).
+     *     The current to_world transformation (should allow for recursive
+     * instancing).
      *
      * The default implementation throws an exception.
      */
-    virtual void optix_prepare_ias(const OptixDeviceContext& /*context*/,
-                                   std::vector<OptixInstance>& /*instances*/,
+    virtual void optix_prepare_ias(const OptixDeviceContext & /*context*/,
+                                   std::vector<OptixInstance> & /*instances*/,
                                    uint32_t /*instance_id*/,
-                                   const ScalarTransform4f& /*transf*/);
+                                   const ScalarTransform4f & /*transf*/);
 
     /**
      * \brief Creates and appends the HitGroupSbtRecord(s) associated with this
@@ -473,14 +532,17 @@ public:
      * program_groups array (the actual program group index is infered by the
      * type of the Shape, see \ref get_shape_descr_idx()).
      */
-    virtual void optix_fill_hitgroup_records(std::vector<HitGroupSbtRecord> &hitgroup_records,
-                                             const OptixProgramGroup *program_groups);
+    virtual void optix_fill_hitgroup_records(
+        std::vector<HitGroupSbtRecord> &hitgroup_records,
+        const OptixProgramGroup *program_groups);
 #endif
 
     void traverse(TraversalCallback *callback) override;
-    void parameters_changed(const std::vector<std::string> &/*keys*/ = {}) override;
+    void
+    parameters_changed(const std::vector<std::string> & /*keys*/ = {}) override;
 
-    /// Return whether shape's parameters require gradients (default implementation return false)
+    /// Return whether shape's parameters require gradients (default
+    /// implementation return false)
     virtual bool parameters_grad_enabled() const;
 
     //! @}
@@ -492,12 +554,21 @@ public:
     MTS_DECLARE_CLASS()
 protected:
     Shape(const Properties &props);
-    inline Shape() { }
+    inline Shape() {}
     virtual ~Shape();
 
-    /// Explicitly register this shape as the parent of the provided sub-objects (emitters, etc.)
+    /// Explicitly register this shape as the parent of the provided sub-objects
+    /// (emitters, etc.)
     void set_children();
     std::string get_children_string() const;
+
+public:
+
+    // FermatNEE
+    bool m_fermat_shape     = false;
+    bool m_caustic_receiver = false;
+    bool m_caustic_caster = false;
+
 protected:
     ref<BSDF> m_bsdf;
     ref<Emitter> m_emitter;
@@ -509,9 +580,10 @@ protected:
     ScalarTransform4f m_to_world;
     ScalarTransform4f m_to_object;
 
+
 #if defined(MTS_ENABLE_OPTIX)
     /// OptiX hitgroup data buffer
-    void* m_optix_data_ptr = nullptr;
+    void *m_optix_data_ptr = nullptr;
 #endif
 };
 
@@ -523,21 +595,26 @@ NAMESPACE_END(mitsuba)
 // -----------------------------------------------------------------------
 
 ENOKI_CALL_SUPPORT_TEMPLATE_BEGIN(mitsuba::Shape)
-    ENOKI_CALL_SUPPORT_METHOD(compute_surface_interaction)
-    ENOKI_CALL_SUPPORT_METHOD(eval_attribute)
-    ENOKI_CALL_SUPPORT_METHOD(eval_attribute_1)
-    ENOKI_CALL_SUPPORT_METHOD(eval_attribute_3)
-    ENOKI_CALL_SUPPORT_GETTER_TYPE(emitter, m_emitter, const typename Class::Emitter *)
-    ENOKI_CALL_SUPPORT_GETTER_TYPE(sensor, m_sensor, const typename Class::Sensor *)
-    ENOKI_CALL_SUPPORT_GETTER_TYPE(bsdf, m_bsdf, const typename Class::BSDF *)
-    ENOKI_CALL_SUPPORT_GETTER_TYPE(interior_medium, m_interior_medium,
-                                   const typename Class::Medium *)
-    ENOKI_CALL_SUPPORT_GETTER_TYPE(exterior_medium, m_exterior_medium,
-                                   const typename Class::Medium *)
-    auto is_emitter() const { return neq(emitter(), nullptr); }
-    auto is_sensor() const { return neq(sensor(), nullptr); }
-    auto is_medium_transition() const { return neq(interior_medium(), nullptr) ||
-                                               neq(exterior_medium(), nullptr); }
+ENOKI_CALL_SUPPORT_METHOD(compute_surface_interaction)
+ENOKI_CALL_SUPPORT_METHOD(eval_attribute)
+ENOKI_CALL_SUPPORT_METHOD(eval_attribute_1)
+ENOKI_CALL_SUPPORT_METHOD(eval_attribute_3)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(emitter, m_emitter,
+                               const typename Class::Emitter *)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(sensor, m_sensor, const typename Class::Sensor *)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(bsdf, m_bsdf, const typename Class::BSDF *)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(is_caustic_receiver, m_caustic_receiver, bool)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(is_caustic_caster, m_caustic_caster, bool)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(is_fermat_shape, m_fermat_shape, bool)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(interior_medium, m_interior_medium,
+                               const typename Class::Medium *)
+ENOKI_CALL_SUPPORT_GETTER_TYPE(exterior_medium, m_exterior_medium,
+                               const typename Class::Medium *)
+auto is_emitter() const { return neq(emitter(), nullptr); }
+auto is_sensor() const { return neq(sensor(), nullptr); }
+auto is_medium_transition() const {
+    return neq(interior_medium(), nullptr) || neq(exterior_medium(), nullptr);
+}
 ENOKI_CALL_SUPPORT_TEMPLATE_END(mitsuba::Shape)
 
 //! @}

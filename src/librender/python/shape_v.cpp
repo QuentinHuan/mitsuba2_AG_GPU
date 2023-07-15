@@ -39,6 +39,8 @@ MTS_PY_EXPORT(Shape) {
         .def_method(Shape, surface_area)
         .def_method(Shape, id)
         .def_method(Shape, is_mesh)
+        .def_method(Shape, is_fermat_shape)
+        .def_method(Shape, is_caustic_receiver)
         .def_method(Shape, is_medium_transition)
         .def_method(Shape, interior_medium)
         .def_method(Shape, exterior_medium)

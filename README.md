@@ -19,6 +19,23 @@
 | [![docs][1]][2] |
 
 
+Implementation of our paper *Optimised Light Rendering through Old Glass*.
+
+Modifications:
+
+shape.h
+shape.cpp
+
+// add caustic_receiver and fermat_shape flags
+
+Additional Files:
+
+heightfield.cpp
+heightfield.cuh
+fermatNEE.h
+fermatNEE.cpp
+fermat_path.cpp
+
 [1]: https://readthedocs.org/projects/mitsuba2/badge/?version=latest
 [2]: https://mitsuba2.readthedocs.io/en/latest/src/getting_started/intro.html
 
