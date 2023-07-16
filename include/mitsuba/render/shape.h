@@ -395,6 +395,16 @@ public:
                m_exterior_medium.get() != nullptr;
     }
 
+    ///FNEE
+    Point3f to_local(Point3f v) const{
+        return m_to_object.transform_affine(v);
+    }
+
+    ///FNEE
+    Point3f to_world(Point3f v) const{
+        return m_to_world.transform_affine(v);
+    }
+
     /// Return the medium that lies on the interior of this shape
     const Medium *interior_medium() const { return m_interior_medium.get(); }
 
@@ -599,6 +609,8 @@ ENOKI_CALL_SUPPORT_METHOD(compute_surface_interaction)
 ENOKI_CALL_SUPPORT_METHOD(eval_attribute)
 ENOKI_CALL_SUPPORT_METHOD(eval_attribute_1)
 ENOKI_CALL_SUPPORT_METHOD(eval_attribute_3)
+ENOKI_CALL_SUPPORT_METHOD(to_local)
+ENOKI_CALL_SUPPORT_METHOD(to_world)
 ENOKI_CALL_SUPPORT_GETTER_TYPE(emitter, m_emitter,
                                const typename Class::Emitter *)
 ENOKI_CALL_SUPPORT_GETTER_TYPE(sensor, m_sensor, const typename Class::Sensor *)

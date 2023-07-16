@@ -98,7 +98,8 @@ template <typename Float, typename Spectrum>
 class FermatPathIntegrator : public MonteCarloIntegrator<Float, Spectrum> {
 public:
     MTS_IMPORT_BASE(MonteCarloIntegrator, m_max_depth, m_rr_depth)
-    MTS_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr, ShapePtr)
+    MTS_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr,
+                     ShapePtr)
     using FermatNEE = FermatNEE<Float, Spectrum>;
     FermatNEE *fermatNEE;
     typename FermatNEE::FNEE_config fnee_config;
@@ -193,25 +194,46 @@ public:
             }
             // --------------------- Emitter Fermat Sampling
             // --------------------- Next Event Estimation through a glass panel
-            ShapePtr shape = si.shape;
-            Mask active_fnee = active && shape->is_caustic_receiver() && !shape->is_caustic_caster();
+            ShapePtr shape   = si.shape;
+            Mask active_fnee = active && shape->is_caustic_receiver() &&
+                               !shape->is_caustic_caster();
 
             if (likely(any_or<true>(active_fnee))) {
 
                 ShapePtr H1, H2;
+                // sample emitter and get the front and back face of glass panel
+                // (H1 and H2)
                 auto [ds, emitter_val] = scene->sample_emitter_fermat(
                     si, sampler->next_2d(active_e), H1, H2, active_fnee);
                 active_fnee &= neq(ds.pdf, 0.f);
 
-                result[active_fnee] += 1.0f;
+                if (likely(any_or<true>(active_fnee))) {
+                    // source and reference points in local coordinates
+                    // TODO hardcoded e
+                    Float e   = 0.05;
+                    Point3f S = H1->to_local(ds.p);
+                    Point3f O = H1->to_local(si.p);
+                    Vector3f dim_H1 =
+                        H1->eval_attribute_3("dimensions", si, active_fnee);
+                    typename FermatNEE::L_data fnee_data = {
+                        select(active_fnee, H1, nullptr),
+                        select(active_fnee, H2, nullptr),
+                        dim_H1,
+                        e,
+                        O,
+                        S,
+                        Point2f(1.0, 1.54)
+                    };
+                    Point4f fnee_sample(sampler->next_1d(), sampler->next_1d(),
+                                        sampler->next_1d(), sampler->next_1d());
+                    Vector3f w_fnee(0.f);
+                    Float fnee_contribution = fermatNEE->fermat_connection(
+                        fnee_data, fnee_sample, &w_fnee, active_fnee);
 
+                    // // output
+                    result[active_fnee] += 1.0f;
+                }
             }
-            // if (on_caustic_receiver && !on_caustic_caster) {
-                // ShapePtr H1, H2;
-                // typename FermatNEE::EmitterInteraction vy =
-                // FermatNEE::sample_emitter_interaction(si,
-                // scene->caustic_emitters(), sampler);
-            // }
 
             // ----------------------- BSDF sampling ----------------------
 

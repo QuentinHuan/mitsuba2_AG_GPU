@@ -281,9 +281,10 @@ Scene<Float, Spectrum>::sample_emitter_fermat(const Interaction3f &ref,
 
             SurfaceInteraction3f si_heightfieldTest =
                 ray_intersect(ray, active);
-            active = active && si_heightfieldTest.is_valid() && si_heightfieldTest.shape->is_fermat_shape();
+            active = active && si_heightfieldTest.is_valid();
             // TODO check is_valid() necessary ??
             if (any_or<true>(active)) {
+                active &= si_heightfieldTest.shape->is_fermat_shape();
                 BSDFContext ctx;
                 auto [bs, bsdf_val] = si_heightfieldTest.bsdf()->sample(
                     ctx, si_heightfieldTest, sample[0], sample, active);
@@ -293,14 +294,19 @@ Scene<Float, Spectrum>::sample_emitter_fermat(const Interaction3f &ref,
                 // check second heighfield
                 SurfaceInteraction3f si_heightfieldTest_2 =
                     ray_intersect(ray, active);
-                active = active && si_heightfieldTest_2.is_valid() && si_heightfieldTest_2.shape->is_fermat_shape();
+                active = active && si_heightfieldTest_2.is_valid();
+
                 if (any_or<true>(active)) {
-                    H1            = si_heightfieldTest.shape;
-                    H2            = si_heightfieldTest_2.shape;
-                    ds[!active]   = zero<DirectionSample3f>();
-                    spec[!active] = 0.f;
+                    active &= si_heightfieldTest_2.shape->is_fermat_shape();
+                    if (any_or<true>(active)) {
+                        H1 = select(active, si_heightfieldTest.shape, nullptr);
+                        H2 =
+                            select(active, si_heightfieldTest_2.shape, nullptr);
+                    }
                 }
             }
+            ds[!active]   = zero<DirectionSample3f>();
+            spec[!active] = 0.f;
         }
     } else {
         ds   = zero<DirectionSample3f>();

@@ -14,13 +14,17 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +602 src/shapes/heightfield.cpp
-badd +211 src/shapes/optix/heightfield.cuh
-badd +1 src/librender/fermatNEE.cpp
-badd +0 include/mitsuba/render/fermatNEE.h
+badd +619 src/shapes/heightfield.cpp
+badd +210 src/shapes/optix/heightfield.cuh
+badd +39 src/librender/fermatNEE.cpp
+badd +92 include/mitsuba/render/fermatNEE.h
+badd +225 src/integrators/fermat_path.cpp
+badd +337 include/mitsuba/render/shape.h
+badd +2 include/mitsuba/core/object.h
+badd +304 src/librender/scene.cpp
 argglobal
 %argdel
-edit src/librender/fermatNEE.cpp
+edit src/shapes/heightfield.cpp
 let s:save_splitbelow = &splitbelow
 let s:save_splitright = &splitright
 set splitbelow splitright
@@ -37,11 +41,11 @@ set winminheight=0
 set winheight=1
 set winminwidth=0
 set winwidth=1
-exe 'vert 1resize ' . ((&columns * 134 + 135) / 270)
-exe 'vert 2resize ' . ((&columns * 135 + 135) / 270)
+exe 'vert 1resize ' . ((&columns * 135 + 135) / 270)
+exe 'vert 2resize ' . ((&columns * 134 + 135) / 270)
 argglobal
 balt src/shapes/optix/heightfield.cuh
-setlocal fdm=syntax
+setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
 setlocal fdi=#
@@ -49,17 +53,64 @@ setlocal fdl=0
 setlocal fml=8
 setlocal fdn=3
 setlocal fen
-let s:l = 2 - ((1 * winheight(0) + 31) / 63)
+silent! normal! zE
+36,78fold
+104,106fold
+122,226fold
+93,241fold
+243,247fold
+249,292fold
+294,316fold
+318,337fold
+339,349fold
+351,362fold
+364,366fold
+373,386fold
+389,392fold
+402,407fold
+410,413fold
+418,427fold
+416,428fold
+443,450fold
+431,453fold
+456,473fold
+475,486fold
+491,530fold
+532,546fold
+547,553fold
+554,556fold
+566,579fold
+559,565fold
+571,594fold
+570,595fold
+598,608fold
+81,620fold
+let &fdl = &fdl
+81
+normal! zo
+532
+normal! zo
+547
+normal! zo
+554
+normal! zo
+570
+normal! zo
+571
+normal! zo
+598
+normal! zo
+let s:l = 619 - ((57 * winheight(0) + 31) / 63)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 2
-normal! 0
+keepjumps 619
+normal! 05|
 wincmd w
 argglobal
 if bufexists(fnamemodify("include/mitsuba/render/fermatNEE.h", ":p")) | buffer include/mitsuba/render/fermatNEE.h | else | edit include/mitsuba/render/fermatNEE.h | endif
 balt src/librender/fermatNEE.cpp
-setlocal fdm=syntax
+setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
 setlocal fdi=#
@@ -67,17 +118,32 @@ setlocal fdl=0
 setlocal fml=8
 setlocal fdn=3
 setlocal fen
+silent! normal! zE
+31,33fold
+35,38fold
+40,42fold
+44,47fold
+49,59fold
+15,60fold
+73,79fold
+80,86fold
+63,166fold
+let &fdl = &fdl
 15
 normal! zo
-let s:l = 34 - ((33 * winheight(0) + 31) / 63)
+63
+normal! zo
+80
+normal! zo
+let s:l = 151 - ((45 * winheight(0) + 31) / 63)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 34
-normal! 05|
+keepjumps 151
+normal! 08|
 wincmd w
-exe 'vert 1resize ' . ((&columns * 134 + 135) / 270)
-exe 'vert 2resize ' . ((&columns * 135 + 135) / 270)
+exe 'vert 1resize ' . ((&columns * 135 + 135) / 270)
+exe 'vert 2resize ' . ((&columns * 134 + 135) / 270)
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0
   silent exe 'bwipe ' . s:wipebuf

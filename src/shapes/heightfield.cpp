@@ -529,6 +529,28 @@ public:
         return si;
     }
 
+    Float eval_attribute_1(const std::string &name, const SurfaceInteraction3f &si, Mask active = true) const override {
+        MTS_MASK_ARGUMENT(active);
+        if (name == "H")
+            return H;
+        else if (name == "L")
+            return L;
+        else if (name == "W")
+            return W;
+        else if (name == "flip")
+            return flip ? -1.0f : 1.0f;
+        else if (name == "N")
+            return Float(N);
+        else
+            return 0.0f;
+    }
+    Color3f eval_attribute_3(const std::string &name, const SurfaceInteraction3f &si, Mask active = true) const override {
+        MTS_MASK_ARGUMENT(active);
+        if (name == "dimensions")
+            return Color3f(H,L,W);
+        else
+            return Color3f(0.f);
+    }
     void traverse(TraversalCallback *callback) override {
         Base::traverse(callback);
     }
